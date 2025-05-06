@@ -2,8 +2,9 @@ import subprocess
 from pathlib import Path
 import shutil
 
-MAIN_PATH = Path('C:/Users/Build/Desktop/folder')
-SCRIPTS_PATH = Path('C:/Users/Build/Desktop/folder/scripts')
+# Set MAIN_PATH to the base folder containing all data folders
+MAIN_PATH = Path('')
+SCRIPTS_PATH = MAIN_PATH / 'scripts'
 
 def process_folder(target_folder):
     print(f"\nProcessing folder: {target_folder.name}")
