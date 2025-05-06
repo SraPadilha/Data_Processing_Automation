@@ -8,8 +8,8 @@ base_path = Path(sys.argv[1])
 
 INPUT_PATH = base_path / 'processedData'
 OUTPUT_PATH = base_path / 'reportData'
-COMFORT_MIN = 18
-COMFORT_MAX = 29
+RANGE_MIN = 18
+RANGE_MAX = 29
 INTERVAL_MINUTES = 15
 HOURS_PER_INTERVAL = INTERVAL_MINUTES / 60
 
@@ -66,15 +66,17 @@ def load_data():
     required_columns = [
         'Date',
         'Time',
-        'Room',
-        'Roof'
+        'Sensor1',
+        'Sensor2'
     ]
+
+    df.rename(columns={'Room': 'Sensor1', 'Roof': 'Sensor2'}, inplace=True)
 
     for col in required_columns:
         if col not in df.columns:
             raise ValueError(f"Column not found: {col}")
 
-    for col in ['Room', 'Roof']:
+    for col in ['Sensor1', 'Sensor2']:
         df[col] = df[col].astype(str).str.replace(',', '.').astype(float)
 
     df['DateTime'] = parse_datetime(df)
@@ -88,24 +90,24 @@ def load_data():
     print(f" Data period: {df['DateTime'].min()} to {df['DateTime'].max()}")
     return df
 
-def calculate_comfort(data, temp_column):
+def calculate_range_stats(data, temp_column):
     total_hours = len(data) * HOURS_PER_INTERVAL
 
     day_period = (data['Hour'] >= 6) & (data['Hour'] < 18)
-    in_comfort = data[temp_column].between(COMFORT_MIN, COMFORT_MAX)
+    in_range = data[temp_column].between(RANGE_MIN, RANGE_MAX)
 
-    comfort_day = (day_period & in_comfort).sum() * HOURS_PER_INTERVAL
-    comfort_night = (~day_period & in_comfort).sum() * HOURS_PER_INTERVAL
-    total_comfort = comfort_day + comfort_night
+    range_day = (day_period & in_range).sum() * HOURS_PER_INTERVAL
+    range_night = (~day_period & in_range).sum() * HOURS_PER_INTERVAL
+    total_range = range_day + range_night
 
     return {
         'Total Hours': round(total_hours, 2),
-        'Comfort (Day)': round(comfort_day, 2),
-        'Comfort (Night)': round(comfort_night, 2),
-        'Total Comfort': round(total_comfort, 2),
-        'No Comfort': round(total_hours - total_comfort, 2),
-        '% Comfort': round((total_comfort / total_hours) * 100, 1),
-        '% No Comfort': round(100 - ((total_comfort / total_hours) * 100), 1)
+        'In Range (Day)': round(range_day, 2),
+        'In Range (Night)': round(range_night, 2),
+        'Total In Range': round(total_range, 2),
+        'Out of Range': round(total_hours - total_range, 2),
+        '% In Range': round((total_range / total_hours) * 100, 1),
+        '% Out of Range': round(100 - ((total_range / total_hours) * 100), 1)
     }
 
 def generate_report(df):
@@ -117,25 +119,25 @@ def generate_report(df):
 
         if month_data.empty:
             print(f"No data for {month_name}")
-            for location in ['Room', 'Roof']:
+            for location in ['Sensor1', 'Sensor2']:
                 results.append({
                     'Month': month_name,
                     'Location': location,
                     'Total Hours': 0,
-                    'Comfort (Day)': 0,
-                    'Comfort (Night)': 0,
-                    'Total Comfort': 0,
-                    'No Comfort': 0,
-                    '% Comfort': 0,
-                    '% No Comfort': 0
+                    'In Range (Day)': 0,
+                    'In Range (Night)': 0,
+                    'Total In Range': 0,
+                    'Out of Range': 0,
+                    '% In Range': 0,
+                    '% Out of Range': 0
                 })
             continue
 
         for location, temp_column in [
-            ('Room', 'Room'),
-            ('Roof', 'Roof')
+            ('Sensor1', 'Sensor1'),
+            ('Sensor2', 'Sensor2')
         ]:
-            metrics = calculate_comfort(month_data.copy(), temp_column)
+            metrics = calculate_range_stats(month_data.copy(), temp_column)
             results.append({
                 'Month': month_name,
                 'Location': location,
@@ -150,7 +152,7 @@ if __name__ == "__main__":
 
         report = generate_report(data)
 
-        base_name = 'final_thermal_comfort_analysis'
+        base_name = 'final_data_analysis'
         extension = '.xlsx'
         output_file = OUTPUT_PATH / f'{base_name}{extension}'
 
@@ -162,15 +164,6 @@ if __name__ == "__main__":
         report.to_excel(output_file, index=False)
         print(f"\n Report generated successfully: {output_file}")
 
-        print("\n Report sample:")
-        print(report.head(8))
-
-        print("\n Monthly hours check:")
-        for month in calendar.month_name[1:]:
-            if month in report['Month'].values:
-                total = report[report['Month'] == month]['Total Hours'].iloc[0]
-                days = int(total / 24)
-                print(f"- {month}: {total}h ({days} days)")
-
     except Exception as e:
         print(f"\n Error during execution: {str(e)}")
+
