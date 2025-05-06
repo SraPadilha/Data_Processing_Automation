@@ -20,9 +20,17 @@ Its modular structure allows easy integration into various workflows where data 
 
 ## Technologies Used
 
+Language:
 - Python 3.x
+
+External Libraries:
 - pandas
 - openpyxl
+
+Standard Library Modules:
+- pathlib
+- subprocess
+- shutil
 
 > *(Libraries can be installed via pip install pandas openpyxl.)*
 
